@@ -9,7 +9,7 @@ local Camera = workspace.CurrentCamera
 --              CONFIGURAÇÕES E ESTADO
 -- ================================================
 
-local CORRECT_KEY = "monite"
+local CORRECT_KEY = "WAKEZINN-123"
 local RGBMode = true
 local BloodMode = false
 local AimbotEnabled = false
