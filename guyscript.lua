@@ -1,205 +1,276 @@
--- WAKEZINN VIP PANEL
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
-local senhaCorreta = "wakevip777"
+-- ================================================
+--              CONFIGURAÇÕES E ESTADO
+-- ================================================
 
-local espHeadAtivo = false
-local espBoxAtivo = false
+local CORRECT_KEY = "monite"
+local RGBMode = true
+local BloodMode = false
+local AimbotEnabled = false
+local SilentAimEnabled = false
+local MagnetEnabled = false
+local UpPlayerEnabled = false
+local FlyEnabled = false
+local AimbotFOV = 100
+local ShowFOV = false
+local SpinBotEnabled = false
+local SpinSpeed = 100 -- Velocidade fixa conforme solicitado
+local NoclipEnabled = false
+local DoubleJumpEnabled = false
+local CurrentLang = "PT" -- PT, EN, ES
+local FPS = 0
 
--- GUI
+local ESPSettings = {
+    Box3D = false,
+    Linha = false,
+    Vida = false,
+    Esqueleto = false,
+    Nome = false,
+    Distancia = false,
+    LinhaRGB = false
+}
 
-local gui = Instance.new("ScreenGui")
-gui.Parent = game.CoreGui
+local LangData = {
+    PT = {Main="Principal", Visual="Visual", Menu="Menu", Full="Config", Info="Info", Aimbot="Aimbot Head", Silent="Silent Aim", Magnet="Magnet", ShowFOV="Exibir FOV", FOVRadius="Raio do FOV", ESPBox="ESP Box 3D", ESPLine="ESP Linha (Topo)", ESPHealth="ESP Vida", ESPSkeleton="ESP Esqueleto", ESPName="ESP Nome", ESPDist="ESP Distancia", ESPRGB="ESP Linha RGB", SpinBot="Spin Bot (100)", Noclip="Noclip", Jump="Pulo Duplo", Lang="Idioma", FPS="FPS", Up="Up Player", Fly="Voar (Fly)"},
+    EN = {Main="Main", Visual="Visual", Menu="Menu", Full="Settings", Info="Info", Aimbot="Aimbot Head", Silent="Silent Aim", Magnet="Magnet", ShowFOV="Show FOV", FOVRadius="FOV Radius", ESPBox="ESP Box 3D", ESPLine="ESP Line (Top)", ESPHealth="ESP Health", ESPSkeleton="ESP Skeleton", ESPName="ESP Name", ESPDist="ESP Distance", ESPRGB="ESP Line RGB", SpinBot="Spin Bot (100)", Noclip="Noclip", Jump="Double Jump", Lang="Language", FPS="FPS", Up="Up Player", Fly="Fly Mode"},
+    ES = {Main="Principal", Visual="Visual", Menu="Menu", Full="Ajustes", Info="Info", Aimbot="Aimbot Cabeza", Silent="Silent Aim", Magnet="Magnet", ShowFOV="Mostrar FOV", FOVRadius="Radio del FOV", ESPBox="ESP Box 3D", ESPLine="ESP Línea (Arriba)", ESPHealth="ESP Vida", ESPSkeleton="ESP Esqueleto", ESPName="ESP Nombre", ESPDist="ESP Distancia", ESPRGB="ESP Línea RGB", SpinBot="Spin Bot (100)", Noclip="Noclip", Jump="Salto Doble", Lang="Idioma", FPS="FPS", Up="Up Player", Fly="Volar (Fly)"}
+}
 
--- LOGIN FRAME
+local C = {
+    MainBG = Color3.fromRGB(10, 10, 12),
+    SidebarBG = Color3.fromRGB(15, 15, 18),
+    Accent = Color3.fromRGB(200, 30, 30),
+    Blood = Color3.fromRGB(139, 0, 0),
+    Text = Color3.fromRGB(240, 240, 240),
+    ToggleOff = Color3.fromRGB(40, 40, 45)
+}
 
-local login = Instance.new("Frame")
-login.Size = UDim2.new(0,300,0,150)
-login.Position = UDim2.new(0.5,-150,0.5,-75)
-login.BackgroundColor3 = Color3.fromRGB(0,0,0)
-login.Parent = gui
+-- ================================================
+--              UTILITÁRIOS
+-- ================================================
 
-local titulo = Instance.new("TextLabel")
-titulo.Size = UDim2.new(1,0,0,40)
-titulo.BackgroundColor3 = Color3.fromRGB(255,0,0)
-titulo.Text = "Wakezinn VIP Login"
-titulo.TextColor3 = Color3.new(1,1,1)
-titulo.Parent = login
-
-local caixaSenha = Instance.new("TextBox")
-caixaSenha.Size = UDim2.new(0.8,0,0,30)
-caixaSenha.Position = UDim2.new(0.1,0,0.4,0)
-caixaSenha.PlaceholderText = "Digite a senha"
-caixaSenha.Parent = login
-
-local entrar = Instance.new("TextButton")
-entrar.Size = UDim2.new(0.5,0,0,30)
-entrar.Position = UDim2.new(0.25,0,0.7,0)
-entrar.Text = "Entrar"
-entrar.BackgroundColor3 = Color3.fromRGB(255,0,0)
-entrar.TextColor3 = Color3.new(1,1,1)
-entrar.Parent = login
-
--- PAINEL
-
-local painel = Instance.new("Frame")
-painel.Size = UDim2.new(0,250,0,150)
-painel.Position = UDim2.new(0.02,0,0.3,0)
-painel.BackgroundColor3 = Color3.fromRGB(0,0,0)
-painel.Visible = false
-painel.Parent = gui
-
-local tab = Instance.new("TextLabel")
-tab.Size = UDim2.new(1,0,0,30)
-tab.BackgroundColor3 = Color3.fromRGB(255,0,0)
-tab.Text = "Wakezinn VIP"
-tab.TextColor3 = Color3.new(1,1,1)
-tab.Parent = painel
-
--- BOTÃO ESP OPONENTE
-
-local espHead = Instance.new("TextButton")
-espHead.Size = UDim2.new(0.8,0,0,30)
-espHead.Position = UDim2.new(0.1,0,0.3,0)
-espHead.Text = "ESP OPONENTE : OFF"
-espHead.BackgroundColor3 = Color3.fromRGB(40,40,40)
-espHead.TextColor3 = Color3.new(1,1,1)
-espHead.Parent = painel
-
--- BOTÃO ESP BOX
-
-local espBox = Instance.new("TextButton")
-espBox.Size = UDim2.new(0.8,0,0,30)
-espBox.Position = UDim2.new(0.1,0,0.6,0)
-espBox.Text = "ESP BOX : OFF"
-espBox.BackgroundColor3 = Color3.fromRGB(40,40,40)
-espBox.TextColor3 = Color3.new(1,1,1)
-espBox.Parent = painel
-
--- LOGIN
-
-entrar.MouseButton1Click:Connect(function()
-
-if caixaSenha.Text == senhaCorreta then
-login.Visible = false
-painel.Visible = true
+local function Create(class, props)
+    local o = Instance.new(class)
+    for k, v in pairs(props) do if k ~= "Parent" then o[k] = v end end
+    if props.Parent then o.Parent = props.Parent end
+    return o
 end
 
-end)
-
--- ESP OPONENTE (linha na cabeça)
-
-local function criarLinha(player)
-
-if player == LocalPlayer then return end
-
-local linha = Drawing.new("Line")
-linha.Color = Color3.fromRGB(255,0,0)
-linha.Thickness = 2
-
-RunService.RenderStepped:Connect(function()
-
-if espHeadAtivo and player.Character and player.Character:FindFirstChild("Head") then
-
-local head = player.Character.Head
-local pos,vis = Camera:WorldToViewportPoint(head.Position)
-
-if vis then
-
-linha.From = Vector2.new(pos.X,pos.Y)
-linha.To = Vector2.new(pos.X,pos.Y - 40)
-linha.Visible = true
-
-else
-linha.Visible = false
+local function MakeDraggable(frame, handle)
+    local drag, dStart, sPos = false, nil, nil
+    handle.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then
+            drag = true; dStart = i.Position; sPos = frame.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(i)
+        if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
+            local d = i.Position - dStart
+            frame.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset+d.X, sPos.Y.Scale, sPos.Y.Offset+d.Y)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end
+    end)
 end
 
-else
-linha.Visible = false
+-- ================================================
+--              SISTEMA DE ESP & FOV
+-- ================================================
+
+local ESP_Objects = {}
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1
+FOVCircle.NumSides = 100
+FOVCircle.Radius = AimbotFOV
+FOVCircle.Filled = false
+FOVCircle.Visible = false
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+
+local function CreateESP(player)
+    local objects = {
+        Box3D = {Drawing.new("Line"), Drawing.new("Line"), Drawing.new("Line"), Drawing.new("Line"), Drawing.new("Line"), Drawing.new("Line"), Drawing.new("Line"), Drawing.new("Line"), Drawing.new("Line"), Drawing.new("Line"), Drawing.new("Line"), Drawing.new("Line")},
+        Line = Drawing.new("Line"),
+        Name = Drawing.new("Text"),
+        Distance = Drawing.new("Text"),
+        HealthBarBG = Drawing.new("Square"),
+        HealthBar = Drawing.new("Square"),
+        Skeleton = {}
+    }
+    for _, line in pairs(objects.Box3D) do line.Thickness = 1.5 end
+    objects.Line.Thickness = 1.5
+    objects.Name.Size = 14; objects.Name.Center = true; objects.Name.Outline = true
+    objects.Distance.Size = 12; objects.Distance.Center = true; objects.Distance.Outline = true
+    objects.HealthBarBG.Filled = true; objects.HealthBarBG.Color = Color3.fromRGB(0,0,0)
+    objects.HealthBar.Filled = true
+    for i = 1, 15 do objects.Skeleton[i] = Drawing.new("Line"); objects.Skeleton[i].Thickness = 2.5 end
+    ESP_Objects[player] = objects
 end
 
-end)
+local function UpdateESP()
+    FOVCircle.Visible = ShowFOV
+    FOVCircle.Radius = AimbotFOV
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    
+    local hue = tick() % 5 / 5
+    local rgbColor = Color3.fromHSV(hue, 1, 1)
+    local espMainColor = ESPSettings.LinhaRGB and rgbColor or Color3.fromRGB(255,255,255)
 
+    for player, objects in pairs(ESP_Objects) do
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+            local char = player.Character
+            local hrp = char.HumanoidRootPart
+            local hum = char.Humanoid
+            
+            -- FIX: Sempre obter a posição atualizada na tela dentro do loop
+            local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+            
+            if onScreen then
+                -- Box 3D
+                if ESPSettings.Box3D then
+                    local size = Vector3.new(2, 3, 2)
+                    local cf = hrp.CFrame
+                    local points = {
+                        Camera:WorldToViewportPoint((cf * CFrame.new(size.X, size.Y, size.Z)).Position),
+                        Camera:WorldToViewportPoint((cf * CFrame.new(-size.X, size.Y, size.Z)).Position),
+                        Camera:WorldToViewportPoint((cf * CFrame.new(-size.X, -size.Y, size.Z)).Position),
+                        Camera:WorldToViewportPoint((cf * CFrame.new(size.X, -size.Y, size.Z)).Position),
+                        Camera:WorldToViewportPoint((cf * CFrame.new(size.X, size.Y, -size.Z)).Position),
+                        Camera:WorldToViewportPoint((cf * CFrame.new(-size.X, size.Y, -size.Z)).Position),
+                        Camera:WorldToViewportPoint((cf * CFrame.new(-size.X, -size.Y, -size.Z)).Position),
+                        Camera:WorldToViewportPoint((cf * CFrame.new(size.X, -size.Y, -size.Z)).Position)
+                    }
+                    local lines = {{1,2},{2,3},{3,4},{4,1},{5,6},{6,7},{7,8},{8,5},{1,5},{2,6},{3,7},{4,8}}
+                    for i, edge in pairs(lines) do
+                        objects.Box3D[i].Visible = true
+                        objects.Box3D[i].From = Vector2.new(points[edge[1]].X, points[edge[1]].Y)
+                        objects.Box3D[i].To = Vector2.new(points[edge[2]].X, points[edge[2]].Y)
+                        objects.Box3D[i].Color = espMainColor
+                    end
+                else for _, l in pairs(objects.Box3D) do l.Visible = false end end
+
+                -- ESP Linha (Topo)
+                objects.Line.Visible = ESPSettings.Linha
+                if ESPSettings.Linha then
+                    objects.Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
+                    objects.Line.To = Vector2.new(pos.X, pos.Y)
+                    objects.Line.Color = espMainColor
+                end
+
+                -- ESP Vida
+                objects.HealthBarBG.Visible = ESPSettings.Vida
+                objects.HealthBar.Visible = ESPSettings.Vida
+                if ESPSettings.Vida then
+                    local headPos = Camera:WorldToViewportPoint(char.Head.Position + Vector3.new(0, 0.5, 0))
+                    local legPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                    local height = math.abs(headPos.Y - legPos.Y)
+                    local width = height / 2
+                    local hpPercent = hum.Health / hum.MaxHealth
+                    objects.HealthBarBG.Size = Vector2.new(2, height)
+                    objects.HealthBarBG.Position = Vector2.new(pos.X - width/2 - 6, pos.Y - height/2)
+                    objects.HealthBar.Size = Vector2.new(2, height * hpPercent)
+                    objects.HealthBar.Position = Vector2.new(pos.X - width/2 - 6, pos.Y + height/2 - (height * hpPercent))
+                    objects.HealthBar.Color = Color3.fromRGB(255 - (255 * hpPercent), 255 * hpPercent, 0)
+                end
+
+                -- Esqueleto Grosso
+                local parts = hum.RigType == Enum.HumanoidRigType.R15 and 
+                    {{"Head","UpperTorso"},{"UpperTorso","LowerTorso"},{"UpperTorso","LeftUpperArm"},{"LeftUpperArm","LeftLowerArm"},{"UpperTorso","RightUpperArm"},{"RightUpperArm","RightLowerArm"},{"LowerTorso","LeftUpperLeg"},{"LeftUpperLeg","LeftLowerLeg"},{"LowerTorso","RightUpperLeg"},{"RightUpperLeg","RightLowerLeg"}} or
+                    {{"Head","Torso"},{"Torso","Left Arm"},{"Torso","Right Arm"},{"Torso","Left Leg"},{"Torso","Right Leg"}}
+                
+                for i, p in pairs(parts) do
+                    local line = objects.Skeleton[i]
+                    if ESPSettings.Esqueleto and char:FindFirstChild(p[1]) and char:FindFirstChild(p[2]) then
+                        local p1, v1 = Camera:WorldToViewportPoint(char[p[1]].Position)
+                        local p2, v2 = Camera:WorldToViewportPoint(char[p[2]].Position)
+                        line.Visible = v1 and v2
+                        line.From = Vector2.new(p1.X, p1.Y); line.To = Vector2.new(p2.X, p2.Y); line.Color = espMainColor
+                    else line.Visible = false end
+                end
+                
+                objects.Name.Visible = ESPSettings.Nome
+                objects.Name.Text = player.Name; objects.Name.Position = Vector2.new(pos.X, pos.Y - 40); objects.Name.Color = Color3.fromRGB(255,255,255)
+                
+                objects.Distance.Visible = ESPSettings.Distancia
+                local d = math.floor((hrp.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
+                objects.Distance.Text = "["..d.."m]"; objects.Distance.Position = Vector2.new(pos.X, pos.Y + 40); objects.Distance.Color = Color3.fromRGB(255,255,0)
+            else for _, v in pairs(objects) do if type(v) == "table" then for _, l in pairs(v) do l.Visible = false end else v.Visible = false end end end
+        else for _, v in pairs(objects) do if type(v) == "table" then for _, l in pairs(v) do l.Visible = false end else v.Visible = false end end end
+    end
 end
 
--- ESP BOX
+-- ================================================
+--              INTERFACE PRINCIPAL
+-- ================================================
 
-function createESP(player)
+local ScreenGui = Create("ScreenGui", {Name = "ZZHubProV7", Parent = game.CoreGui, ZIndexBehavior = Enum.ZIndexBehavior.Global})
 
-if player == LocalPlayer then return end
+-- ================================================
+--              WAKEZINN LOGIN UI
+-- ================================================
 
-local box = Drawing.new("Square")
-box.Color = Color3.fromRGB(255,255,255)
-box.Thickness = 2
-box.Filled = false
+local LoginFrame = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local KeyBox = Instance.new("TextBox")
+local GetKey = Instance.new("TextButton")
+local Login = Instance.new("TextButton")
 
-RunService.RenderStepped:Connect(function()
+LoginFrame.Parent = ScreenGui
+LoginFrame.Size = UDim2.new(0,300,0,200)
+LoginFrame.Position = UDim2.new(0.5,-150,0.5,-100)
+LoginFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+LoginFrame.BorderSizePixel = 0
+LoginFrame.ZIndex = 100
 
-if espBoxAtivo and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+Instance.new("UICorner",LoginFrame).CornerRadius = UDim.new(0,10)
 
-local root = player.Character.HumanoidRootPart
-local pos,visible = Camera:WorldToViewportPoint(root.Position)
+Title.Parent = LoginFrame
+Title.Size = UDim2.new(1,0,0,40)
+Title.BackgroundColor3 = Color3.fromRGB(160,0,255)
+Title.Text = "wakezinn [1]"
+Title.TextColor3 = Color3.fromRGB(255,255,255)
+Title.TextScaled = true
+Title.Font = Enum.Font.GothamBold
+Title.ZIndex = 101
 
-if visible then
+KeyBox.Parent = LoginFrame
+KeyBox.Position = UDim2.new(0.1,0,0.3,0)
+KeyBox.Size = UDim2.new(0.8,0,0,35)
+KeyBox.PlaceholderText = "Key"
+KeyBox.Text = ""
+KeyBox.BackgroundColor3 = Color3.fromRGB(20,20,20)
+KeyBox.TextColor3 = Color3.fromRGB(255,255,255)
+KeyBox.Font = Enum.Font.Gotham
+KeyBox.ZIndex = 101
+Instance.new("UICorner",KeyBox).CornerRadius = UDim.new(0,8)
 
-local size = Vector2.new(40,60)
+GetKey.Parent = LoginFrame
+GetKey.Position = UDim2.new(0.1,0,0.5,0)
+GetKey.Size = UDim2.new(0.8,0,0,35)
+GetKey.BackgroundColor3 = Color3.fromRGB(170,0,255)
+GetKey.Text = "Colar Key"
+GetKey.TextColor3 = Color3.fromRGB(255,255,255)
+GetKey.Font = Enum.Font.GothamBold
+GetKey.TextScaled = true
+GetKey.ZIndex = 101
+Instance.new("UICorner",GetKey).CornerRadius = UDim.new(0,8)
 
-box.Size = size
-box.Position = Vector2.new(pos.X - size.X/2,pos.Y - size.Y/2)
-box.Visible = true
+Login.Parent = LoginFrame
+Login.Position = UDim2.new(0.1,0,0.7,0)
+Login.Size = UDim2.new(0.8,0,0,35)
+Login.BackgroundColor3 = Color3.fromRGB(170,0,255)
+Login.Text = "Login"
+Login.TextColor3 = Color3.fromRGB(255,255,255)
+Login.Font = Enum.Font.GothamBold
+Login.TextScaled = true
+Login.ZIndex = 101
+Instance.new("UICorner",Login).CornerRadius = UDim.new(0,8)
 
-else
-box.Visible = false
-end
+-- Sistema de
 
-else
-box.Visible = false
-end
-
-end)
-
-end
-
--- BOTÕES
-
-espHead.MouseButton1Click:Connect(function()
-
-espHeadAtivo = not espHeadAtivo
-
-if espHeadAtivo then
-espHead.Text = "ESP OPONENTE : ON"
-else
-espHead.Text = "ESP OPONENTE : OFF"
-end
-
-end)
-
-espBox.MouseButton1Click:Connect(function()
-
-espBoxAtivo = not espBoxAtivo
-
-if espBoxAtivo then
-espBox.Text = "ESP BOX : ON"
-else
-espBox.Text = "ESP BOX : OFF"
-end
-
-end)
-
--- PLAYER LOOP
-
-for _,player in pairs(Players:GetPlayers()) do
-criarLinha(player)
-createESP(player)
-end
-
-Players.PlayerAdded:Connect(function(player)
-
-criarLinha(player)
-createESP(player)
-
-end)
