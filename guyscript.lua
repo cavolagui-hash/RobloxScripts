@@ -1,373 +1,324 @@
-// --- Configurações Globais ---
-const CORRECT_KEY = 'guyxiter';
-const TAB_NAMES = ['Aimbot', 'Visual', 'Player', 'Misc', 'Config'];
-let isRGBEnabled = true;
-let savedConfigs = {};
+-- Configurações Globais
+local ESP_CONFIG = {
+    enabled = false,
+    types = {
+        box2D = true,
+        line = true,
+        name = true,
+        health = true,
+        cube3D = false
+    },
+    colors = {
+        main = Color(0, 255, 255),    -- Ciano
+        secondary = Color(255, 0, 255),-- Magenta
+        cube3D = Color(255, 255, 0),  -- Amarelo
+        health = Color(0, 255, 0)     -- Verde
+    },
+    panel = {
+        x = ScrW() * 0.2,
+        y = ScrH() * 0.2,
+        w = ScrW() * 0.6,
+        h = ScrH() * 0.6,
+        draggable = true,
+        visible = true
+    },
+    FOV = 50
+}
 
-// --- Função Principal de Inicialização ---
-function initCheatMenu() {
-    // Cria estilos globais
-    createGlobalStyles();
+-- Simulação de Oponentes (substitua por detecção real do jogo)
+local opponents = {
+    {id = 1, name = "INIMIGO 1", pos = Vector(100, 200, 0), size = Vector(32, 32, 72), health = 85},
+    {id = 2, name = "INIMIGO 2", pos = Vector(-50, 150, 0), size = Vector(32, 32, 72), health = 42},
+    {id = 3, name = "INIMIGO 3", pos = Vector(250, -100, 0), size = Vector(32, 32, 72), health = 100}
+}
+
+-- Inicialização Principal
+hook.Add("Initialize", "CheatMenu_Init", function()
+    createGlobalStyles()
+    createMainPanel()
+    startGameLoop()
+end)
+
+-- Criação de Estilos (Garry's Mod vgui exemplo)
+function createGlobalStyles()
+    -- Estilos para painel e componentes
+    local skin = vgui.GetControlTable("DFrame").Skin
+    skin.Colours.CheatMenu.Header = Color(30, 30, 30)
+    skin.Colours.CheatMenu.Background = Color(20, 20, 20)
+    skin.Colours.CheatMenu.TabActive = ESP_CONFIG.colors.main
+    skin.Colours.CheatMenu.TabInactive = Color(150, 150, 150)
+end
+
+-- Criação do Painel Principal
+function createMainPanel()
+    local frame = vgui.Create("DFrame")
+    frame:SetPos(ESP_CONFIG.panel.x, ESP_CONFIG.panel.y)
+    frame:SetSize(ESP_CONFIG.panel.w, ESP_CONFIG.panel.h)
+    frame:SetTitle("MENU ESP - OPONENTES")
+    frame:SetDraggable(ESP_CONFIG.panel.draggable)
+    frame:SetSizable(true)
+    frame:ShowCloseButton(true)
+    frame:SetVisible(ESP_CONFIG.panel.visible)
+
+    -- Header com toggle RGB
+    local header = vgui.Create("DPanel", frame)
+    header:Dock(TOP)
+    header:SetTall(40)
+    header.Paint = function(self, w, h)
+        draw.RoundedBox(0, 0, 0, w, h, ESP_CONFIG.colors.header or ESP_CONFIG.colors.main)
+        draw.SimpleText("SISTEMA DE ESP - JOGO", "DermaLarge", 10, h/2, Color(0,0,0), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+    end
+
+    local rgbToggle = vgui.Create("DButton", header)
+    rgbToggle:Dock(RIGHT)
+    rgbToggle:SetWide(100)
+    rgbToggle:SetText("RGB: ATIVADO")
+    rgbToggle.DoClick = function()
+        ESP_CONFIG.colors.header = ESP_CONFIG.colors.header and nil or Color(math.random(0,255), math.random(0,255), math.random(0,255))
+        rgbToggle:SetText(ESP_CONFIG.colors.header and "RGB: ALEATÓRIO" or "RGB: ATIVADO")
+    end
+
+    -- Tabs
+    local tabs = vgui.Create("DPropertySheet", frame)
+    tabs:Dock(FILL)
+
+    -- Tab Aimbot
+    local tabAimbot = vgui.Create("DPanel", tabs)
+    tabAimbot.Paint = function(self, w, h) draw.RoundedBox(0, 0, 0, w, h, ESP_CONFIG.colors.Background) end
     
-    // Cria elementos principais
-    const loginScreen = createLoginScreen();
-    const matrixBg = createMatrixBackground();
-    const gameOverlay = createGameOverlay();
-    const mainPanel = createMainPanel();
+    local fovLabel = vgui.Create("DLabel", tabAimbot)
+    fovLabel:SetPos(20, 20)
+    fovLabel:SetText("FOV AIMBOT: " .. ESP_CONFIG.FOV .. "px")
+    fovLabel:SetFont("DermaLarge")
+    fovLabel:SizeToContents()
 
-    // Adiciona elementos ao body
-    document.body.appendChild(loginScreen);
-    document.body.appendChild(matrixBg);
-    document.body.appendChild(gameOverlay);
-    document.body.appendChild(mainPanel);
+    local fovSlider = vgui.Create("DNumSlider", tabAimbot)
+    fovSlider:SetPos(20, 60)
+    fovSlider:SetSize(300, 30)
+    fovSlider:SetMin(20)
+    fovSlider:SetMax(150)
+    fovSlider:SetValue(ESP_CONFIG.FOV)
+    fovSlider:SetText("")
+    fovSlider.OnValueChanged = function(self, val)
+        ESP_CONFIG.FOV = math.Round(val)
+        fovLabel:SetText("FOV AIMBOT: " .. ESP_CONFIG.FOV .. "px")
+    end
 
-    // Inicializa funcionalidades após login
-    setupLoginHandler(loginScreen, () => {
-        initMatrixEffect(matrixBg);
-        initDraggablePanel(mainPanel);
-        initTabs(mainPanel);
-        initRGBToggle(mainPanel);
-        initColorPicker(mainPanel);
-        initFOVControl(mainPanel);
-        initOverlayToggle(gameOverlay, mainPanel);
-        initConfigSaveLoad(mainPanel);
-        initMobileSupport(mainPanel);
-    });
-}
+    local fovCircle = vgui.Create("DPanel", tabAimbot)
+    fovCircle:SetPos(20, 100)
+    fovCircle:SetSize(100, 100)
+    fovCircle.Paint = function(self, w, h)
+        draw.NoTexture()
+        surface.SetDrawColor(ESP_CONFIG.colors.main)
+        surface.DrawCircle(w/2, h/2, ESP_CONFIG.FOV/2)
+    end
 
-// --- Criação de Estilos Globais ---
-function createGlobalStyles() {
-    const style = document.createElement('style');
-    style.textContent = `
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
-        body { overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #000; }
+    tabs:AddSheet("Aimbot", tabAimbot, "icon16/crosshair.png")
 
-        /* Efeito Matrix */
-        .matrix-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; }
-        .matrix-canvas { display: block; background: #000; }
+    -- Tab Visual (ESP Principal)
+    local tabVisual = vgui.Create("DPanel", tabs)
+    tabVisual.Paint = function(self, w, h) draw.RoundedBox(0, 0, 0, w, h, ESP_CONFIG.colors.Background) end
 
-        /* Tela de Login */
-        .login-screen {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: #000; z-index: 20; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; gap: 20px;
-        }
-        .login-input {
-            padding: 15px 20px; width: 80%; max-width: 300px;
-            border: 2px solid #ff00ff; border-radius: 8px; background: #222; color: #fff;
-            font-size: 1rem; outline: none;
-        }
-        .login-btn {
-            padding: 12px 30px; border: none; border-radius: 8px;
-            background: #ff00ff; color: #000; font-weight: bold; cursor: pointer;
-            transition: background 0.2s ease;
-        }
-        .login-btn:hover { background: #cc00cc; }
+    -- Toggle Geral do ESP
+    local espToggle = vgui.Create("DButton", tabVisual)
+    espToggle:SetPos(20, 20)
+    espToggle:SetSize(200, 40)
+    espToggle:SetText(ESP_CONFIG.enabled and "ESP: ATIVADO" or "ESP: DESATIVADO")
+    espToggle.DoClick = function()
+        ESP_CONFIG.enabled = not ESP_CONFIG.enabled
+        espToggle:SetText(ESP_CONFIG.enabled and "ESP: ATIVADO" or "ESP: DESATIVADO")
+    end
 
-        /* Painel Flutuante */
-        .draggable-panel {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 90vw; max-width: 600px; background: #1a1a1a;
-            border: 2px solid #ff00ff; border-radius: 12px;
-            box-shadow: 0 0 20px rgba(255,0,255,0.5); z-index: 10;
-            overflow: hidden; transition: all 0.3s ease;
-        }
-        .panel-header {
-            padding: 15px; background: linear-gradient(90deg, #ff00ff, #00ffff, #ff00ff);
-            background-size: 200% 100%; animation: rgbGradient 3s linear infinite;
-            cursor: move; display: flex; justify-content: space-between; align-items: center;
-        }
-        @keyframes rgbGradient { 0% { background-position: 0% 0%; } 100% { background-position: 200% 0%; } }
-        .header-title { color: #000; font-weight: bold; font-size: 1.2rem; }
-        .rgb-toggle {
-            padding: 5px 10px; border: none; border-radius: 5px;
-            background: #333; color: #fff; cursor: pointer;
-            transition: background 0.2s ease;
-        }
-        .rgb-toggle:hover { background: #444; }
+    -- Seletor de Cores
+    local colorLabel = vgui.Create("DLabel", tabVisual)
+    colorLabel:SetPos(20, 80)
+    colorLabel:SetText("COR PRINCIPAL ESP")
+    colorLabel:SetFont("DermaLarge")
+    colorLabel:SizeToContents()
 
-        /* Tabs */
-        .tabs-container { display: flex; background: #222; overflow-x: auto; }
-        .tab-btn {
-            padding: 12px 20px; border: none; background: transparent; color: #aaa;
-            cursor: pointer; transition: all 0.2s ease; position: relative;
-            font-size: 1rem;
-        }
-        .tab-btn.active { color: #00ffff; font-weight: bold; }
-        .tab-btn.active::after {
-            content: ''; position: absolute; bottom: 0; left: 0; width: 100%;
-            height: 3px; background: linear-gradient(90deg, #ff00ff, #00ffff);
-            animation: tabSlide 0.3s ease forwards;
-        }
-        @keyframes tabSlide { 0% { width: 0; left: 50%; } 100% { width: 100%; left: 0; } }
-        .tab-content { display: none; padding: 20px; color: #fff; }
-        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+    local colorPicker = vgui.Create("DColorMixer", tabVisual)
+    colorPicker:SetPos(20, 110)
+    colorPicker:SetSize(300, 200)
+    colorPicker:SetColor(ESP_CONFIG.colors.main)
+    colorPicker.ValueChanged = function(self, col)
+        ESP_CONFIG.colors.main = col
+    end
 
-        /* Componentes */
-        .color-picker { margin: 10px 0; display: flex; align-items: center; gap: 10px; }
-        .fov-control { margin: 15px 0; }
-        .fov-circle {
-            width: 100px; height: 100px; border: 3px solid #00ffff; border-radius: 50%;
-            margin: 10px auto; position: relative; transition: all 0.2s ease;
-        }
-        .overlay-toggle { margin: 10px 0; display: flex; gap: 15px; flex-wrap: wrap; }
-        .toggle-btn {
-            padding: 8px 12px; border: 2px solid #ff00ff; border-radius: 5px;
-            background: #333; color: #fff; cursor: pointer; transition: all 0.2s ease;
-        }
-        .toggle-btn.active { background: #ff00ff; color: #000; }
-        .config-btn {
-            padding: 10px 20px; border: none; border-radius: 5px;
-            background: linear-gradient(90deg, #ff00ff, #00ffff); color: #000;
-            font-weight: bold; cursor: pointer; margin: 10px 5px 10px 0;
-            transition: opacity 0.2s ease;
-        }
-        .config-btn:hover { opacity: 0.9; }
+    -- Controles de Tipo de ESP
+    local espTypesLabel = vgui.Create("DLabel", tabVisual)
+    espTypesLabel:SetPos(350, 80)
+    espTypesLabel:SetText("TIPOS DE ESP")
+    espTypesLabel:SetFont("DermaLarge")
+    espTypesLabel:SizeToContents()
 
-        /* Overlay */
-        .game-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 5;
-            pointer-events: none; display: none;
-        }
-        .sim-box {
-            position: absolute; width: 150px; height: 250px; border: 2px solid #00ffff;
-            box-shadow: 0 0 10px rgba(0,255,255,0.8);
-        }
-        .sim-line {
-            position: absolute; width: 2px; background: #ff00ff;
-            box-shadow: 0 0 10px rgba(255,0,255,0.8);
-        }
-    `;
-    document.head.appendChild(style);
-}
+    -- Toggle Box 2D
+    local boxToggle = vgui.Create("DCheckBoxLabel", tabVisual)
+    boxToggle:SetPos(350, 110)
+    boxToggle:SetText("BOX 2D")
+    boxToggle:SetValue(ESP_CONFIG.types.box2D and 1 or 0)
+    boxToggle.OnChange = function(self, val)
+        ESP_CONFIG.types.box2D = val
+    end
 
-// --- Criação de Elementos DOM ---
-function createLoginScreen() {
-    const screen = document.createElement('div');
-    screen.className = 'login-screen';
+    -- Toggle Linha Central
+    local lineToggle = vgui.Create("DCheckBoxLabel", tabVisual)
+    lineToggle:SetPos(350, 140)
+    lineToggle:SetText("LINHA CENTRAL")
+    lineToggle:SetValue(ESP_CONFIG.types.line and 1 or 0)
+    lineToggle.OnChange = function(self, val)
+        ESP_CONFIG.types.line = val
+    end
 
-    const input = document.createElement('input');
-    input.className = 'login-input';
-    input.placeholder = 'Digite a chave de acesso...';
-    input.type = 'text';
+    -- Toggle Nome
+    local nameToggle = vgui.Create("DCheckBoxLabel", tabVisual)
+    nameToggle:SetPos(350, 170)
+    nameToggle:SetText("NOME DO INIMIGO")
+    nameToggle:SetValue(ESP_CONFIG.types.name and 1 or 0)
+    nameToggle.OnChange = function(self, val)
+        ESP_CONFIG.types.name = val
+    end
 
-    const btn = document.createElement('button');
-    btn.className = 'login-btn';
-    btn.textContent = 'Entrar';
+    -- Toggle Vida
+    local healthToggle = vgui.Create("DCheckBoxLabel", tabVisual)
+    healthToggle:SetPos(350, 200)
+    healthToggle:SetText("BARRA DE VIDA")
+    healthToggle:SetValue(ESP_CONFIG.types.health and 1 or 0)
+    healthToggle.OnChange = function(self, val)
+        ESP_CONFIG.types.health = val
+    end
 
-    screen.appendChild(input);
-    screen.appendChild(btn);
-    return screen;
-}
+    -- Toggle Cubo 3D
+    local cubeToggle = vgui.Create("DCheckBoxLabel", tabVisual)
+    cubeToggle:SetPos(350, 230)
+    cubeToggle:SetText("CUBO 3D")
+    cubeToggle:SetValue(ESP_CONFIG.types.cube3D and 1 or 0)
+    cubeToggle.OnChange = function(self, val)
+        ESP_CONFIG.types.cube3D = val
+    end
 
-function createMatrixBackground() {
-    const bg = document.createElement('div');
-    bg.className = 'matrix-bg';
-    
-    const canvas = document.createElement('canvas');
-    canvas.className = 'matrix-canvas';
-    bg.appendChild(canvas);
-    return bg;
-}
+    -- Botão Ativar Todos
+    local allToggle = vgui.Create("DButton", tabVisual)
+    allToggle:SetPos(350, 270)
+    allToggle:SetSize(150, 30)
+    allToggle:SetText("ATIVAR TODOS")
+    allToggle.DoClick = function()
+        for k, _ in pairs(ESP_CONFIG.types) do
+            ESP_CONFIG.types[k] = true
+            local toggle = tabVisual:FindChildByName("DCheckBoxLabel_" .. k)
+            if toggle then toggle:SetValue(1) end
+        end
+    end
 
-function createGameOverlay() {
-    const overlay = document.createElement('div');
-    overlay.className = 'game-overlay';
+    tabs:AddSheet("Visual (ESP)", tabVisual, "icon16/eye.png")
 
-    // Cria elementos de overlay simulado
-    const boxes = [
-        { top: '20%', left: '15%' },
-        { top: '40%', left: '70%' }
-    ];
-    boxes.forEach(pos => {
-        const box = document.createElement('div');
-        box.className = 'sim-box';
-        box.style.top = pos.top;
-        box.style.left = pos.left;
-        overlay.appendChild(box);
-    });
+    -- Tab Configurações
+    local tabConfig = vgui.Create("DPanel", tabs)
+    tabConfig.Paint = function(self, w, h) draw.RoundedBox(0, 0, 0, w, h, ESP_CONFIG.colors.Background) end
 
-    const lines = [
-        { top: '30%', left: '50%', height: '200px', rotate: '45deg' },
-        { top: '60%', left: '30%', height: '150px', rotate: '-30deg' }
-    ];
-    lines.forEach(pos => {
-        const line = document.createElement('div');
-        line.className = 'sim-line';
-        line.style.top = pos.top;
-        line.style.left = pos.left;
-        line.style.height = pos.height;
-        line.style.transform = `rotate(${pos.rotate})`;
-        overlay.appendChild(line);
-    });
+    -- Botão Salvar Config
+    local saveBtn = vgui.Create("DButton", tabConfig)
+    saveBtn:SetPos(20, 20)
+    saveBtn:SetSize(200, 40)
+    saveBtn:SetText("SALVAR CONFIGURAÇÕES")
+    saveBtn.DoClick = function()
+        file.Write("esp_config.txt", util.TableToJSON(ESP_CONFIG))
+        Derma_Message("Configurações salvas com sucesso!", "SUCESSO", "OK")
+    end
 
-    return overlay;
-}
+    -- Botão Carregar Config
+    local loadBtn = vgui.Create("DButton", tabConfig)
+    loadBtn:SetPos(20, 70)
+    loadBtn:SetSize(200, 40)
+    loadBtn:SetText("CARREGAR CONFIGURAÇÕES")
+    loadBtn.DoClick = function()
+        if file.Exists("esp_config.txt", "DATA") then
+            local data = file.Read("esp_config.txt", "DATA")
+            ESP_CONFIG = util.JSONToTable(data)
+            Derma_Message("Configurações carregadas com sucesso!", "SUCESSO", "OK")
+            -- Atualizar componentes com novas configs
+            espToggle:SetText(ESP_CONFIG.enabled and "ESP: ATIVADO" or "ESP: DESATIVADO")
+            colorPicker:SetColor(ESP_CONFIG.colors.main)
+            fovSlider:SetValue(ESP_CONFIG.FOV)
+            fovLabel:SetText("FOV AIMBOT: " .. ESP_CONFIG.FOV .. "px")
+        else
+            Derma_Message("Nenhuma configuração salva encontrada!", "ERRO", "OK")
+        end
+    end
 
-function createMainPanel() {
-    const panel = document.createElement('div');
-    panel.className = 'draggable-panel';
+    tabs:AddSheet("Configurações", tabConfig, "icon16/save.png")
+end
 
-    // Cabeçalho
-    const header = document.createElement('div');
-    header.className = 'panel-header';
-    header.id = 'drag-handle';
+-- Loop de Renderização do ESP
+function startGameLoop()
+    hook.Add("PostDrawTranslucentRenderables", "ESP_Render", function()
+        if not ESP_CONFIG.enabled then return end
 
-    const title = document.createElement('div');
-    title.className = 'header-title';
-    title.textContent = 'CHEAT MENU PRO';
+        local localPlayer = LocalPlayer()
+        if not IsValid(localPlayer) then return end
 
-    const rgbToggle = document.createElement('button');
-    rgbToggle.className = 'rgb-toggle';
-    rgbToggle.id = 'rgb-toggle';
-    rgbToggle.textContent = 'RGB: ON';
+        for _, opp in pairs(opponents) do
+            -- Converter posição 3D para tela 2D
+            local screenPos = opp.pos:ToScreen()
+            if not screenPos.visible then continue end
 
-    header.appendChild(title);
-    header.appendChild(rgbToggle);
-    panel.appendChild(header);
+            -- Tamanho ajustado com base na distância
+            local dist = localPlayer:GetPos():Distance(opp.pos)
+            local size = math.Clamp(2000 / dist, 10, 100)
+            local halfSize = size / 2
 
-    // Tabs
-    const tabsContainer = document.createElement('div');
-    tabsContainer.className = 'tabs-container';
-    panel.appendChild(tabsContainer);
+            -- Desenhar Box 2D
+            if ESP_CONFIG.types.box2D then
+                surface.SetDrawColor(ESP_CONFIG.colors.main)
+                surface.DrawOutlinedRect(screenPos.x - halfSize, screenPos.y - size, size, size)
+            end
 
-    const tabsContent = document.createElement('div');
-    tabsContent.className = 'tabs-content-wrapper';
-    panel.appendChild(tabsContent);
+            -- Desenhar Linha Central
+            if ESP_CONFIG.types.line then
+                surface.SetDrawColor(ESP_CONFIG.colors.secondary)
+                surface.DrawLine(screenPos.x, ScrH()/2, screenPos.x, screenPos.y - size/2)
+            end
 
-    // Cria cada tab
-    TAB_NAMES.forEach((name, idx) => {
-        // Botão da tab
-        const tabBtn = document.createElement('button');
-        tabBtn.className = `tab-btn ${idx === 0 ? 'active' : ''}`;
-        tabBtn.dataset.tab = name.toLowerCase();
-        tabBtn.textContent = name;
-        tabsContainer.appendChild(tabBtn);
+            -- Desenhar Nome
+            if ESP_CONFIG.types.name then
+                draw.SimpleText(opp.name, "DermaLarge", screenPos.x, screenPos.y - size - 10, Color(255,255,255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+            end
 
-        // Conteúdo da tab
-        const tabContent = document.createElement('div');
-        tabContent.className = `tab-content ${idx === 0 ? 'active' : ''}`;
-        tabContent.id = `${name.toLowerCase()}-tab`;
-        
-        switch(name) {
-            case 'Aimbot':
-                tabContent.innerHTML = `
-                    <h3>AIMBOT CONFIG</h3>
-                    <div class="fov-control">
-                        <label>FOV: <span id="fov-value">50</span>px</label>
-                        <input type="range" id="fov-slider" min="20" max="150" value="50">
-                        <div id="fov-circle" class="fov-circle"></div>
-                    </div>
-                `;
-                break;
-            case 'Visual':
-                tabContent.innerHTML = `
-                    <h3>VISUAL SETTINGS</h3>
-                    <div class="color-picker">
-                        <label>Cor do Painel:</label>
-                        <input type="color" id="panel-color" value="#ff00ff">
-                    </div>
-                    <div class="overlay-toggle">
-                        <button class="toggle-btn" id="box-overlay-toggle">Boxes</button>
-                        <button class="toggle-btn" id="line-overlay-toggle">Linhas</button>
-                        <button class="toggle-btn" id="3d-overlay-toggle">3D Overlay</button>
-                    </div>
-                `;
-                break;
-            case 'Player':
-                tabContent.innerHTML = `<h3>PLAYER OPTIONS</h3><p>Configurações específicas do jogador</p>`;
-                break;
-            case 'Misc':
-                tabContent.innerHTML = `<h3>MISC SETTINGS</h3><p>Opções adicionais personalizáveis</p>`;
-                break;
-            case 'Config':
-                tabContent.innerHTML = `
-                    <h3>CONFIGURAÇÕES</h3>
-                    <button class="config-btn" id="save-config">Salvar Configurações</button>
-                    <button class="config-btn" id="load-config">Carregar Configurações</button>
-                `;
-                break;
-        }
+            -- Desenhar Barra de Vida
+            if ESP_CONFIG.types.health then
+                local healthHeight = size * (opp.health / 100)
+                surface.SetDrawColor(Color(50,50,50))
+                surface.DrawRect(screenPos.x + halfSize + 5, screenPos.y - size, 5, size)
+                surface.SetDrawColor(ESP_CONFIG.colors.health)
+                surface.DrawRect(screenPos.x + halfSize + 5, screenPos.y - size + (size - healthHeight), 5, healthHeight)
+            end
 
-        tabsContent.appendChild(tabContent);
-    });
+            -- Desenhar Cubo 3D
+            if ESP_CONFIG.types.cube3D then
+                render.SetColorMaterial()
+                render.DrawWireframeBox(opp.pos, Angle(0, localPlayer:EyeAngles().y - 90, 0), -opp.size/2, opp.size/2, ESP_CONFIG.colors.cube3D)
+            end
+        end
+    end)
 
-    return panel;
-}
+    -- Atualizar posição dos oponentes (simulação de movimento)
+    timer.Create("Opponent_Movement", 2, 0, function()
+        for _, opp in pairs(opponents) do
+            opp.pos = opp.pos + Vector(math.random(-5,5), math.random(-5,5), 0)
+            opp.health = math.Clamp(opp.health + math.random(-2, 2), 0, 100)
+        end
+    end)
+end
 
-// --- Implementação das Funcionalidades ---
-function setupLoginHandler(loginScreen, onSuccess) {
-    const input = loginScreen.querySelector('.login-input');
-    const btn = loginScreen.querySelector('.login-btn');
+-- Função auxiliar para desenhar círculos (Garry's Mod)
+function surface.DrawCircle(x, y, radius)
+    local seg = radius * 0.1
+    local cir = {}
 
-    const validateKey = () => {
-        if (input.value.trim() === CORRECT_KEY) {
-            loginScreen.style.display = 'none';
-            onSuccess();
-        } else {
-            alert('Chave inválida!');
-            input.value = '';
-        }
-    };
+    table.insert(cir, {x = x, y = y, u = 0.5, v = 0.5})
+    for i = 0, seg do
+        local a = math.rad((i / seg) * -360)
+        table.insert(cir, {x = x + math.sin(a) * radius, y = y + math.cos(a) * radius, u = math.sin(a)/2 + 0.5, v = math.cos(a)/2 + 0.5})
+    end
 
-    btn.addEventListener('click', validateKey);
-    input.addEventListener('keypress', (e) => e.key === 'Enter' && validateKey());
-}
-
-function initMatrixEffect(matrixBg) {
-    const canvas = matrixBg.querySelector('.matrix-canvas');
-    const ctx = canvas.getContext('2d');
-
-    const resize = () => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    };
-    window.addEventListener('resize', resize);
-    resize();
-
-    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZあいうえおかきくけこ';
-    const columns = Math.floor(canvas.width / 20);
-    const drops = Array(columns).fill(1);
-
-    const draw = () => {
-        ctx.fillStyle = 'rgba(0,0,0,0.05)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#00ff00';
-        ctx.font = '15px monospace';
-
-        drops.forEach((drop, i) => {
-            const text = chars[Math.floor(Math.random() * chars.length)];
-            ctx.fillText(text, i * 20, drop * 20);
-            if (drop * 20 > canvas.height && Math.random() > 0.975) drops[i] = 0;
-            drops[i]++;
-        });
-    };
-    setInterval(draw, 35);
-}
-
-function initDraggablePanel(panel) {
-    const handle = panel.querySelector('#drag-handle');
-    let isDragging = false;
-    let offsetX, offsetY;
-
-    const startDrag = (e) => {
-        isDragging = true;
-        const clientX = e.clientX || e.touches[0].clientX;
-        const clientY = e.clientY || e.touches[0].clientY;
-        const rect = panel.getBoundingClientRect();
-        offsetX = clientX - rect.left;
-        offsetY = clientY - rect.top;
-
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('touchmove', drag, { passive: false });
-        document.addEventListener('mouseup', stopDrag);
-        document.addEventListener('touchend', stopDrag);
-    };
-
-    const drag = (e) => {
-        if (!isDragging) return;
-        e.preventDefault();
-        const clientX = e.clientX || e.touches[0].clientX;
-        const clientY = e.clientY || e.touches[0].clientY;
-        panel
+    surface.DrawPoly(cir)
+end
