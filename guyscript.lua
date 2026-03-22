@@ -1,324 +1,312 @@
--- Configurações Globais
-local ESP_CONFIG = {
-    enabled = false,
-    types = {
-        box2D = true,
-        line = true,
-        name = true,
-        health = true,
-        cube3D = false
-    },
-    colors = {
-        main = Color(0, 255, 255),    -- Ciano
-        secondary = Color(255, 0, 255),-- Magenta
-        cube3D = Color(255, 255, 0),  -- Amarelo
-        health = Color(0, 255, 0)     -- Verde
-    },
-    panel = {
-        x = ScrW() * 0.2,
-        y = ScrH() * 0.2,
-        w = ScrW() * 0.6,
-        h = ScrH() * 0.6,
-        draggable = true,
-        visible = true
-    },
-    FOV = 50
-}
+-- Script para Roblox: wakezyn iPhone Mod Menu
+-- Localização: StarterGui
 
--- Simulação de Oponentes (substitua por detecção real do jogo)
-local opponents = {
-    {id = 1, name = "INIMIGO 1", pos = Vector(100, 200, 0), size = Vector(32, 32, 72), health = 85},
-    {id = 2, name = "INIMIGO 2", pos = Vector(-50, 150, 0), size = Vector(32, 32, 72), health = 42},
-    {id = 3, name = "INIMIGO 3", pos = Vector(250, -100, 0), size = Vector(32, 32, 72), health = 100}
-}
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
--- Inicialização Principal
-hook.Add("Initialize", "CheatMenu_Init", function()
-    createGlobalStyles()
-    createMainPanel()
-    startGameLoop()
-end)
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
--- Criação de Estilos (Garry's Mod vgui exemplo)
-function createGlobalStyles()
-    -- Estilos para painel e componentes
-    local skin = vgui.GetControlTable("DFrame").Skin
-    skin.Colours.CheatMenu.Header = Color(30, 30, 30)
-    skin.Colours.CheatMenu.Background = Color(20, 20, 20)
-    skin.Colours.CheatMenu.TabActive = ESP_CONFIG.colors.main
-    skin.Colours.CheatMenu.TabInactive = Color(150, 150, 150)
-end
+-- Configurações principais do painel
+local MOD_MENU_NAME = "wakezyn iPhone"
+local CORRECT_PASSWORD = "guy"
+local PANEL_SIZE = UDim2.new(0, 100, 0, 100)
+local PANEL_DEFAULT_POS = UDim2.new(0, 50, 0, 50)
+local PANEL_MAIN_COLOR = Color3.new(1, 0, 0) -- Vermelho
+local PANEL_DRAG_SPEED = 5 -- Velocidade rápida de movimento
+local MATRIX_EFFECT_SPEED = 0.15
 
--- Criação do Painel Principal
-function createMainPanel()
-    local frame = vgui.Create("DFrame")
-    frame:SetPos(ESP_CONFIG.panel.x, ESP_CONFIG.panel.y)
-    frame:SetSize(ESP_CONFIG.panel.w, ESP_CONFIG.panel.h)
-    frame:SetTitle("MENU ESP - OPONENTES")
-    frame:SetDraggable(ESP_CONFIG.panel.draggable)
-    frame:SetSizable(true)
-    frame:ShowCloseButton(true)
-    frame:SetVisible(ESP_CONFIG.panel.visible)
+-- Estado do painel
+local isMenuVisible = false
+local isLoggedIn = false
+local isMatrixActive = true
+local isRGBEnabled = false
+local currentTab = "Player"
+local selectedTarget = nil
+local inputFingerCount = 0
 
-    -- Header com toggle RGB
-    local header = vgui.Create("DPanel", frame)
-    header:Dock(TOP)
-    header:SetTall(40)
-    header.Paint = function(self, w, h)
-        draw.RoundedBox(0, 0, 0, w, h, ESP_CONFIG.colors.header or ESP_CONFIG.colors.main)
-        draw.SimpleText("SISTEMA DE ESP - JOGO", "DermaLarge", 10, h/2, Color(0,0,0), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
-    end
+-- Cores configuráveis
+local currentLineColor = Color3.new(0, 1, 0) -- Verde padrão
+local currentSkeletonColor = Color3.new(1, 1, 0) -- Amarelo padrão
+local currentBoxColor = Color3.new(0, 0, 1) -- Azul padrão
+local currentRGBSpeed = 0.05
 
-    local rgbToggle = vgui.Create("DButton", header)
-    rgbToggle:Dock(RIGHT)
-    rgbToggle:SetWide(100)
-    rgbToggle:SetText("RGB: ATIVADO")
-    rgbToggle.DoClick = function()
-        ESP_CONFIG.colors.header = ESP_CONFIG.colors.header and nil or Color(math.random(0,255), math.random(0,255), math.random(0,255))
-        rgbToggle:SetText(ESP_CONFIG.colors.header and "RGB: ALEATÓRIO" or "RGB: ATIVADO")
-    end
+-- Variáveis de funcionalidades
+local speedValue = 16 -- Velocidade padrão do jogador
+local aimbotMode = "ao olhar" -- Modo padrão
+local isSpeedActive = false
+local isLineESPActive = false
+local isSkeletonESPActive = false
+local isBoxESPActive = false
+local isAimbotActive = false
 
-    -- Tabs
-    local tabs = vgui.Create("DPropertySheet", frame)
-    tabs:Dock(FILL)
+-- Criação da GUI principal
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = MOD_MENU_NAME
+ScreenGui.Parent = LocalPlayer.PlayerGui
 
-    -- Tab Aimbot
-    local tabAimbot = vgui.Create("DPanel", tabs)
-    tabAimbot.Paint = function(self, w, h) draw.RoundedBox(0, 0, 0, w, h, ESP_CONFIG.colors.Background) end
-    
-    local fovLabel = vgui.Create("DLabel", tabAimbot)
-    fovLabel:SetPos(20, 20)
-    fovLabel:SetText("FOV AIMBOT: " .. ESP_CONFIG.FOV .. "px")
-    fovLabel:SetFont("DermaLarge")
-    fovLabel:SizeToContents()
+-- Tela de login
+local LoginFrame = Instance.new("Frame")
+LoginFrame.Name = "LoginFrame"
+LoginFrame.Size = UDim2.new(0, 200, 0, 120)
+LoginFrame.Position = UDim2.new(0.5, -100, 0.5, -60)
+LoginFrame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+LoginFrame.BorderColor3 = PANEL_MAIN_COLOR
+LoginFrame.BorderSizePixel = 2
+LoginFrame.Parent = ScreenGui
 
-    local fovSlider = vgui.Create("DNumSlider", tabAimbot)
-    fovSlider:SetPos(20, 60)
-    fovSlider:SetSize(300, 30)
-    fovSlider:SetMin(20)
-    fovSlider:SetMax(150)
-    fovSlider:SetValue(ESP_CONFIG.FOV)
-    fovSlider:SetText("")
-    fovSlider.OnValueChanged = function(self, val)
-        ESP_CONFIG.FOV = math.Round(val)
-        fovLabel:SetText("FOV AIMBOT: " .. ESP_CONFIG.FOV .. "px")
-    end
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Name = "TitleLabel"
+TitleLabel.Text = MOD_MENU_NAME
+TitleLabel.Size = UDim2.new(1, 0, 0, 30)
+TitleLabel.Position = UDim2.new(0, 0, 0, 0)
+TitleLabel.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+TitleLabel.TextColor3 = Color3.new(1, 1, 1)
+TitleLabel.Font = Enum.Font.SourceSansBold
+TitleLabel.TextSize = 18
+TitleLabel.Parent = LoginFrame
 
-    local fovCircle = vgui.Create("DPanel", tabAimbot)
-    fovCircle:SetPos(20, 100)
-    fovCircle:SetSize(100, 100)
-    fovCircle.Paint = function(self, w, h)
-        draw.NoTexture()
-        surface.SetDrawColor(ESP_CONFIG.colors.main)
-        surface.DrawCircle(w/2, h/2, ESP_CONFIG.FOV/2)
-    end
+local PasswordBox = Instance.new("TextBox")
+PasswordBox.Name = "PasswordBox"
+PasswordBox.PlaceholderText = "Digite a senha..."
+PasswordBox.Size = UDim2.new(0.8, 0, 0, 25)
+PasswordBox.Position = UDim2.new(0.1, 0, 0, 40)
+PasswordBox.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+PasswordBox.TextColor3 = Color3.new(1, 1, 1)
+PasswordBox.ClearTextOnFocus = false
+PasswordBox.Parent = LoginFrame
 
-    tabs:AddSheet("Aimbot", tabAimbot, "icon16/crosshair.png")
+local LoginButton = Instance.new("TextButton")
+LoginButton.Name = "LoginButton"
+LoginButton.Text = "Entrar"
+LoginButton.Size = UDim2.new(0.5, 0, 0, 25)
+LoginButton.Position = UDim2.new(0.25, 0, 0, 75)
+LoginButton.BackgroundColor3 = PANEL_MAIN_COLOR
+LoginButton.TextColor3 = Color3.new(1, 1, 1)
+LoginButton.Parent = LoginFrame
 
-    -- Tab Visual (ESP Principal)
-    local tabVisual = vgui.Create("DPanel", tabs)
-    tabVisual.Paint = function(self, w, h) draw.RoundedBox(0, 0, 0, w, h, ESP_CONFIG.colors.Background) end
+-- Painel principal do menu
+local MainPanel = Instance.new("Frame")
+MainPanel.Name = "MainPanel"
+MainPanel.Size = PANEL_SIZE
+MainPanel.Position = PANEL_DEFAULT_POS
+MainPanel.BackgroundColor3 = PANEL_MAIN_COLOR
+MainPanel.BorderColor3 = Color3.new(0, 0, 0)
+MainPanel.BorderSizePixel = 2
+MainPanel.Visible = false
+MainPanel.Parent = ScreenGui
 
-    -- Toggle Geral do ESP
-    local espToggle = vgui.Create("DButton", tabVisual)
-    espToggle:SetPos(20, 20)
-    espToggle:SetSize(200, 40)
-    espToggle:SetText(ESP_CONFIG.enabled and "ESP: ATIVADO" or "ESP: DESATIVADO")
-    espToggle.DoClick = function()
-        ESP_CONFIG.enabled = not ESP_CONFIG.enabled
-        espToggle:SetText(ESP_CONFIG.enabled and "ESP: ATIVADO" or "ESP: DESATIVADO")
-    end
+-- Botão de arrasto do painel
+local DragButton = Instance.new("TextButton")
+DragButton.Name = "DragButton"
+DragButton.Text = MOD_MENU_NAME
+DragButton.Size = UDim2.new(1, 0, 0, 20)
+DragButton.Position = UDim2.new(0, 0, 0, 0)
+DragButton.BackgroundColor3 = Color3.new(0.8, 0, 0)
+DragButton.TextColor3 = Color3.new(1, 1, 1)
+DragButton.Font = Enum.Font.SourceSansBold
+DragButton.TextSize = 12
+DragButton.Parent = MainPanel
 
-    -- Seletor de Cores
-    local colorLabel = vgui.Create("DLabel", tabVisual)
-    colorLabel:SetPos(20, 80)
-    colorLabel:SetText("COR PRINCIPAL ESP")
-    colorLabel:SetFont("DermaLarge")
-    colorLabel:SizeToContents()
+-- Tabs do menu
+local TabContainer = Instance.new("Frame")
+TabContainer.Name = "TabContainer"
+TabContainer.Size = UDim2.new(1, 0, 0, 20)
+TabContainer.Position = UDim2.new(0, 0, 0, 20)
+TabContainer.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+TabContainer.Parent = MainPanel
 
-    local colorPicker = vgui.Create("DColorMixer", tabVisual)
-    colorPicker:SetPos(20, 110)
-    colorPicker:SetSize(300, 200)
-    colorPicker:SetColor(ESP_CONFIG.colors.main)
-    colorPicker.ValueChanged = function(self, col)
-        ESP_CONFIG.colors.main = col
-    end
+local PlayerTab = Instance.new("TextButton")
+PlayerTab.Name = "PlayerTab"
+PlayerTab.Text = "PLAYER"
+PlayerTab.Size = UDim2.new(1/3, 0, 1, 0)
+PlayerTab.Position = UDim2.new(0, 0, 0, 0)
+PlayerTab.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+PlayerTab.TextColor3 = Color3.new(1, 1, 1)
+PlayerTab.Parent = TabContainer
 
-    -- Controles de Tipo de ESP
-    local espTypesLabel = vgui.Create("DLabel", tabVisual)
-    espTypesLabel:SetPos(350, 80)
-    espTypesLabel:SetText("TIPOS DE ESP")
-    espTypesLabel:SetFont("DermaLarge")
-    espTypesLabel:SizeToContents()
+local ESPTab = Instance.new("TextButton")
+ESPTab.Name = "ESPTab"
+ESPTab.Text = "ESP"
+ESPTab.Size = UDim2.new(1/3, 0, 1, 0)
+ESPTab.Position = UDim2.new(1/3, 0, 0, 0)
+ESPTab.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+ESPTab.TextColor3 = Color3.new(1, 1, 1)
+ESPTab.Parent = TabContainer
 
-    -- Toggle Box 2D
-    local boxToggle = vgui.Create("DCheckBoxLabel", tabVisual)
-    boxToggle:SetPos(350, 110)
-    boxToggle:SetText("BOX 2D")
-    boxToggle:SetValue(ESP_CONFIG.types.box2D and 1 or 0)
-    boxToggle.OnChange = function(self, val)
-        ESP_CONFIG.types.box2D = val
-    end
+local AimbotTab = Instance.new("TextButton")
+AimbotTab.Name = "AimbotTab"
+AimbotTab.Text = "AIMBOT"
+AimbotTab.Size = UDim2.new(1/3, 0, 1, 0)
+AimbotTab.Position = UDim2.new(2/3, 0, 0, 0)
+AimbotTab.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+AimbotTab.TextColor3 = Color3.new(1, 1, 1)
+AimbotTab.Parent = TabContainer
 
-    -- Toggle Linha Central
-    local lineToggle = vgui.Create("DCheckBoxLabel", tabVisual)
-    lineToggle:SetPos(350, 140)
-    lineToggle:SetText("LINHA CENTRAL")
-    lineToggle:SetValue(ESP_CONFIG.types.line and 1 or 0)
-    lineToggle.OnChange = function(self, val)
-        ESP_CONFIG.types.line = val
-    end
+-- Área de conteúdo das tabs
+local ContentArea = Instance.new("ScrollingFrame")
+ContentArea.Name = "ContentArea"
+ContentArea.Size = UDim2.new(1, 0, 1, -40)
+ContentArea.Position = UDim2.new(0, 0, 0, 40)
+ContentArea.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+ContentArea.CanvasSize = UDim2.new(1, 0, 3, 0)
+ContentArea.ScrollBarThickness = 5
+ContentArea.Parent = MainPanel
 
-    -- Toggle Nome
-    local nameToggle = vgui.Create("DCheckBoxLabel", tabVisual)
-    nameToggle:SetPos(350, 170)
-    nameToggle:SetText("NOME DO INIMIGO")
-    nameToggle:SetValue(ESP_CONFIG.types.name and 1 or 0)
-    nameToggle.OnChange = function(self, val)
-        ESP_CONFIG.types.name = val
-    end
+-- Painel de configurações de cores e efeitos
+local ConfigPanel = Instance.new("Frame")
+ConfigPanel.Name = "ConfigPanel"
+ConfigPanel.Size = UDim2.new(1, 0, 0, 30)
+ConfigPanel.Position = UDim2.new(0, 0, 1, -30)
+ConfigPanel.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+ConfigPanel.Parent = MainPanel
 
-    -- Toggle Vida
-    local healthToggle = vgui.Create("DCheckBoxLabel", tabVisual)
-    healthToggle:SetPos(350, 200)
-    healthToggle:SetText("BARRA DE VIDA")
-    healthToggle:SetValue(ESP_CONFIG.types.health and 1 or 0)
-    healthToggle.OnChange = function(self, val)
-        ESP_CONFIG.types.health = val
-    end
+local ColorButton = Instance.new("TextButton")
+ColorButton.Text = "Mudar Cores"
+ColorButton.Size = UDim2.new(0.4, 0, 0, 25)
+ColorButton.Position = UDim2.new(0.05, 0, 0.5, -12.5)
+ColorButton.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+ColorButton.TextColor3 = Color3.new(1, 1, 1)
+ColorButton.Parent = ConfigPanel
 
-    -- Toggle Cubo 3D
-    local cubeToggle = vgui.Create("DCheckBoxLabel", tabVisual)
-    cubeToggle:SetPos(350, 230)
-    cubeToggle:SetText("CUBO 3D")
-    cubeToggle:SetValue(ESP_CONFIG.types.cube3D and 1 or 0)
-    cubeToggle.OnChange = function(self, val)
-        ESP_CONFIG.types.cube3D = val
-    end
+local RGBToggle = Instance.new("TextButton")
+RGBToggle.Text = "RGB: Desativado"
+RGBToggle.Size = UDim2.new(0.4, 0, 0, 25)
+RGBToggle.Position = UDim2.new(0.55, 0, 0.5, -12.5)
+RGBToggle.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+RGBToggle.TextColor3 = Color3.new(1, 1, 1)
+RGBToggle.Parent = ConfigPanel
 
-    -- Botão Ativar Todos
-    local allToggle = vgui.Create("DButton", tabVisual)
-    allToggle:SetPos(350, 270)
-    allToggle:SetSize(150, 30)
-    allToggle:SetText("ATIVAR TODOS")
-    allToggle.DoClick = function()
-        for k, _ in pairs(ESP_CONFIG.types) do
-            ESP_CONFIG.types[k] = true
-            local toggle = tabVisual:FindChildByName("DCheckBoxLabel_" .. k)
-            if toggle then toggle:SetValue(1) end
-        end
-    end
+-- Conteúdo da Tab PLAYER
+local PlayerContent = Instance.new("Frame")
+PlayerContent.Name = "PlayerContent"
+PlayerContent.Size = UDim2.new(1, 0, 0, 150)
+PlayerContent.Position = UDim2.new(0, 0, 0, 0)
+PlayerContent.BackgroundTransparency = 1
+PlayerContent.Parent = ContentArea
 
-    tabs:AddSheet("Visual (ESP)", tabVisual, "icon16/eye.png")
+-- Speed Player
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Text = "SPEED PLAYER: "..speedValue
+SpeedLabel.Size = UDim2.new(1, 0, 0, 20)
+SpeedLabel.Position = UDim2.new(0, 0, 0, 10)
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.TextColor3 = Color3.new(1, 1, 1)
+SpeedLabel.TextSize = 12
+SpeedLabel.Parent = PlayerContent
 
-    -- Tab Configurações
-    local tabConfig = vgui.Create("DPanel", tabs)
-    tabConfig.Paint = function(self, w, h) draw.RoundedBox(0, 0, 0, w, h, ESP_CONFIG.colors.Background) end
+local SpeedSlider = Instance.new("ScrollingFrame")
+SpeedSlider.Name = "SpeedSlider"
+SpeedSlider.Size = UDim2.new(0.8, 0, 0, 15)
+SpeedSlider.Position = UDim2.new(0.1, 0, 0, 35)
+SpeedSlider.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+SpeedSlider.ClipsDescendants = true
+SpeedSlider.CanvasSize = UDim2.new(99, 0, 0, 0)
+SpeedSlider.Parent = PlayerContent
 
-    -- Botão Salvar Config
-    local saveBtn = vgui.Create("DButton", tabConfig)
-    saveBtn:SetPos(20, 20)
-    saveBtn:SetSize(200, 40)
-    saveBtn:SetText("SALVAR CONFIGURAÇÕES")
-    saveBtn.DoClick = function()
-        file.Write("esp_config.txt", util.TableToJSON(ESP_CONFIG))
-        Derma_Message("Configurações salvas com sucesso!", "SUCESSO", "OK")
-    end
+local SliderKnob = Instance.new("Frame")
+SliderKnob.Size = UDim2.new(0, 5, 0, 15)
+SliderKnob.Position = UDim2.new(0, 0, 0, 0)
+SliderKnob.BackgroundColor3 = Color3.new(1, 1, 1)
+SliderKnob.Parent = SpeedSlider
 
-    -- Botão Carregar Config
-    local loadBtn = vgui.Create("DButton", tabConfig)
-    loadBtn:SetPos(20, 70)
-    loadBtn:SetSize(200, 40)
-    loadBtn:SetText("CARREGAR CONFIGURAÇÕES")
-    loadBtn.DoClick = function()
-        if file.Exists("esp_config.txt", "DATA") then
-            local data = file.Read("esp_config.txt", "DATA")
-            ESP_CONFIG = util.JSONToTable(data)
-            Derma_Message("Configurações carregadas com sucesso!", "SUCESSO", "OK")
-            -- Atualizar componentes com novas configs
-            espToggle:SetText(ESP_CONFIG.enabled and "ESP: ATIVADO" or "ESP: DESATIVADO")
-            colorPicker:SetColor(ESP_CONFIG.colors.main)
-            fovSlider:SetValue(ESP_CONFIG.FOV)
-            fovLabel:SetText("FOV AIMBOT: " .. ESP_CONFIG.FOV .. "px")
-        else
-            Derma_Message("Nenhuma configuração salva encontrada!", "ERRO", "OK")
-        end
-    end
+local SpeedToggle = Instance.new("TextButton")
+SpeedToggle.Text = "Ativar"
+SpeedToggle.Size = UDim2.new(0.4, 0, 0, 20)
+SpeedToggle.Position = UDim2.new(0.3, 0, 0, 55)
+SpeedToggle.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+SpeedToggle.TextColor3 = Color3.new(1, 1, 1)
+SpeedToggle.Parent = PlayerContent
 
-    tabs:AddSheet("Configurações", tabConfig, "icon16/save.png")
-end
+-- TP Player
+local TPLabel = Instance.new("TextLabel")
+TPLabel.Text = "TP PLAYER"
+TPLabel.Size = UDim2.new(1, 0, 0, 20)
+TPLabel.Position = UDim2.new(0, 0, 0, 85)
+TPLabel.BackgroundTransparency = 1
+TPLabel.TextColor3 = Color3.new(1, 1, 1)
+TPLabel.TextSize = 12
+TPLabel.Parent = PlayerContent
 
--- Loop de Renderização do ESP
-function startGameLoop()
-    hook.Add("PostDrawTranslucentRenderables", "ESP_Render", function()
-        if not ESP_CONFIG.enabled then return end
+local TargetDropdown = Instance.new("TextButton")
+TargetDropdown.Text = "Selecionar Alvo"
+TargetDropdown.Size = UDim2.new(0.8, 0, 0, 20)
+TargetDropdown.Position = UDim2.new(0.1, 0, 0, 110)
+TargetDropdown.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+TargetDropdown.TextColor3 = Color3.new(1, 1, 1)
+TargetDropdown.Parent = PlayerContent
 
-        local localPlayer = LocalPlayer()
-        if not IsValid(localPlayer) then return end
+local TPToggle = Instance.new("TextButton")
+TPToggle.Text = "Teletransportar"
+TPToggle.Size = UDim2.new(0.4, 0, 0, 20)
+TPToggle.Position = UDim2.new(0.3, 0, 0, 135)
+TPToggle.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+TPToggle.TextColor3 = Color3.new(1, 1, 1)
+TPToggle.Parent = PlayerContent
 
-        for _, opp in pairs(opponents) do
-            -- Converter posição 3D para tela 2D
-            local screenPos = opp.pos:ToScreen()
-            if not screenPos.visible then continue end
+-- Conteúdo da Tab ESP
+local ESPContent = Instance.new("Frame")
+ESPContent.Name = "ESPContent"
+ESPContent.Size = UDim2.new(1, 0, 0, 180)
+ESPContent.Position = UDim2.new(0, 0, 0, 0)
+ESPContent.BackgroundTransparency = 1
+ESPContent.Visible = false
+ESPContent.Parent = ContentArea
 
-            -- Tamanho ajustado com base na distância
-            local dist = localPlayer:GetPos():Distance(opp.pos)
-            local size = math.Clamp(2000 / dist, 10, 100)
-            local halfSize = size / 2
+-- ESP Linha
+local LineESPLabel = Instance.new("TextLabel")
+LineESPLabel.Text = "ESP LINHA"
+LineESPLabel.Size = UDim2.new(1, 0, 0, 20)
+LineESPLabel.Position = UDim2.new(0, 0, 0, 10)
+LineESPLabel.BackgroundTransparency = 1
+LineESPLabel.TextColor3 = Color3.new(1, 1, 1)
+LineESPLabel.TextSize = 12
+LineESPLabel.Parent = ESPContent
 
-            -- Desenhar Box 2D
-            if ESP_CONFIG.types.box2D then
-                surface.SetDrawColor(ESP_CONFIG.colors.main)
-                surface.DrawOutlinedRect(screenPos.x - halfSize, screenPos.y - size, size, size)
-            end
+local LineESPToggle = Instance.new("TextButton")
+LineESPToggle.Text = "Ativar"
+LineESPToggle.Size = UDim2.new(0.4, 0, 0, 20)
+LineESPToggle.Position = UDim2.new(0.3, 0, 0, 35)
+LineESPToggle.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+LineESPToggle.TextColor3 = Color3.new(1, 1, 1)
+LineESPToggle.Parent = ESPContent
 
-            -- Desenhar Linha Central
-            if ESP_CONFIG.types.line then
-                surface.SetDrawColor(ESP_CONFIG.colors.secondary)
-                surface.DrawLine(screenPos.x, ScrH()/2, screenPos.x, screenPos.y - size/2)
-            end
+-- ESP Esqueleto
+local SkeletonESPLabel = Instance.new("TextLabel")
+SkeletonESPLabel.Text = "ESP ESQUELETO 🦴"
+SkeletonESPLabel.Size = UDim2.new(1, 0, 0, 20)
+SkeletonESPLabel.Position = UDim2.new(0, 0, 0, 65)
+SkeletonESPLabel.BackgroundTransparency = 1
+SkeletonESPLabel.TextColor3 = Color3.new(1, 1, 1)
+SkeletonESPLabel.TextSize = 12
+SkeletonESPLabel.Parent = ESPContent
 
-            -- Desenhar Nome
-            if ESP_CONFIG.types.name then
-                draw.SimpleText(opp.name, "DermaLarge", screenPos.x, screenPos.y - size - 10, Color(255,255,255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-            end
+local SkeletonESPToggle = Instance.new("TextButton")
+SkeletonESPToggle.Text = "Ativar"
+SkeletonESPToggle.Size = UDim2.new(0.4, 0, 0, 20)
+SkeletonESPToggle.Position = UDim2.new(0.3, 0, 0, 90)
+SkeletonESPToggle.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+SkeletonESPToggle.TextColor3 = Color3.new(1, 1, 1)
+SkeletonESPToggle.Parent = ESPContent
 
-            -- Desenhar Barra de Vida
-            if ESP_CONFIG.types.health then
-                local healthHeight = size * (opp.health / 100)
-                surface.SetDrawColor(Color(50,50,50))
-                surface.DrawRect(screenPos.x + halfSize + 5, screenPos.y - size, 5, size)
-                surface.SetDrawColor(ESP_CONFIG.colors.health)
-                surface.DrawRect(screenPos.x + halfSize + 5, screenPos.y - size + (size - healthHeight), 5, healthHeight)
-            end
+-- ESP Box
+local BoxESPLabel = Instance.new("TextLabel")
+BoxESPLabel.Text = "ESP BOX"
+BoxESPLabel.Size = UDim2.new(1, 0, 0, 20)
+BoxESPLabel.Position = UDim2.new(0, 0, 0, 120)
+BoxESPLabel.BackgroundTransparency = 1
+BoxESPLabel.TextColor3 = Color3.new(1, 1, 1)
+BoxESPLabel.TextSize = 12
+BoxESPLabel.Parent = ESPContent
 
-            -- Desenhar Cubo 3D
-            if ESP_CONFIG.types.cube3D then
-                render.SetColorMaterial()
-                render.DrawWireframeBox(opp.pos, Angle(0, localPlayer:EyeAngles().y - 90, 0), -opp.size/2, opp.size/2, ESP_CONFIG.colors.cube3D)
-            end
-        end
-    end)
+local BoxESPToggle = Instance.new("TextButton")
+BoxESPToggle.Text = "Ativar"
+BoxESPToggle.Size = UDim2.new(0.4, 0, 0, 20)
+BoxESPToggle.Position = UDim2.new(0.3, 0, 0, 145)
+BoxESPToggle.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+BoxESPToggle.TextColor3 = Color3.new(1, 1, 1)
+BoxESPToggle.Parent = ESPContent
 
-    -- Atualizar posição dos oponentes (simulação de movimento)
-    timer.Create("Opponent_Movement", 2, 0, function()
-        for _, opp in pairs(opponents) do
-            opp.pos = opp.pos + Vector(math.random(-5,5), math.random(-5,5), 0)
-            opp.health = math.Clamp(opp.health + math.random(-2, 2), 0, 100)
-        end
-    end)
-end
-
--- Função auxiliar para desenhar círculos (Garry's Mod)
-function surface.DrawCircle(x, y, radius)
-    local seg = radius * 0.1
-    local cir = {}
-
-    table.insert(cir, {x = x, y = y, u = 0.5, v = 0.5})
-    for i = 0, seg do
-        local a = math.rad((i / seg) * -360)
-        table.insert(cir, {x = x + math.sin(a) * radius, y = y + math.cos(a) * radius, u = math.sin(a)/2 + 0.5, v = math.cos(a)/2 + 0.5})
-    end
-
-    surface.DrawPoly(cir)
-end
+-- Conteúdo
