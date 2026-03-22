@@ -11,7 +11,6 @@ local Mouse = LocalPlayer:GetMouse()
 
 -- Configurações principais do painel
 local MOD_MENU_NAME = "wakezyn iPhone"
-local CORRECT_PASSWORD = "guy"
 local PANEL_SIZE = UDim2.new(0, 100, 0, 100)
 local PANEL_DEFAULT_POS = UDim2.new(0, 50, 0, 50)
 local PANEL_MAIN_COLOR = Color3.new(1, 0, 0) -- Vermelho
@@ -19,8 +18,7 @@ local PANEL_DRAG_SPEED = 5 -- Velocidade rápida de movimento
 local MATRIX_EFFECT_SPEED = 0.15
 
 -- Estado do painel
-local isMenuVisible = false
-local isLoggedIn = false
+local isMenuVisible = true -- Menu visível por padrão sem login
 local isMatrixActive = true
 local isRGBEnabled = false
 local currentTab = "Player"
@@ -47,46 +45,6 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = MOD_MENU_NAME
 ScreenGui.Parent = LocalPlayer.PlayerGui
 
--- Tela de login
-local LoginFrame = Instance.new("Frame")
-LoginFrame.Name = "LoginFrame"
-LoginFrame.Size = UDim2.new(0, 200, 0, 120)
-LoginFrame.Position = UDim2.new(0.5, -100, 0.5, -60)
-LoginFrame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-LoginFrame.BorderColor3 = PANEL_MAIN_COLOR
-LoginFrame.BorderSizePixel = 2
-LoginFrame.Parent = ScreenGui
-
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Name = "TitleLabel"
-TitleLabel.Text = MOD_MENU_NAME
-TitleLabel.Size = UDim2.new(1, 0, 0, 30)
-TitleLabel.Position = UDim2.new(0, 0, 0, 0)
-TitleLabel.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
-TitleLabel.TextColor3 = Color3.new(1, 1, 1)
-TitleLabel.Font = Enum.Font.SourceSansBold
-TitleLabel.TextSize = 18
-TitleLabel.Parent = LoginFrame
-
-local PasswordBox = Instance.new("TextBox")
-PasswordBox.Name = "PasswordBox"
-PasswordBox.PlaceholderText = "Digite a senha..."
-PasswordBox.Size = UDim2.new(0.8, 0, 0, 25)
-PasswordBox.Position = UDim2.new(0.1, 0, 0, 40)
-PasswordBox.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
-PasswordBox.TextColor3 = Color3.new(1, 1, 1)
-PasswordBox.ClearTextOnFocus = false
-PasswordBox.Parent = LoginFrame
-
-local LoginButton = Instance.new("TextButton")
-LoginButton.Name = "LoginButton"
-LoginButton.Text = "Entrar"
-LoginButton.Size = UDim2.new(0.5, 0, 0, 25)
-LoginButton.Position = UDim2.new(0.25, 0, 0, 75)
-LoginButton.BackgroundColor3 = PANEL_MAIN_COLOR
-LoginButton.TextColor3 = Color3.new(1, 1, 1)
-LoginButton.Parent = LoginFrame
-
 -- Painel principal do menu
 local MainPanel = Instance.new("Frame")
 MainPanel.Name = "MainPanel"
@@ -95,7 +53,7 @@ MainPanel.Position = PANEL_DEFAULT_POS
 MainPanel.BackgroundColor3 = PANEL_MAIN_COLOR
 MainPanel.BorderColor3 = Color3.new(0, 0, 0)
 MainPanel.BorderSizePixel = 2
-MainPanel.Visible = false
+MainPanel.Visible = isMenuVisible
 MainPanel.Parent = ScreenGui
 
 -- Botão de arrasto do painel
@@ -309,4 +267,40 @@ BoxESPToggle.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
 BoxESPToggle.TextColor3 = Color3.new(1, 1, 1)
 BoxESPToggle.Parent = ESPContent
 
--- Conteúdo
+-- Conteúdo da Tab AIMBOT
+local AimbotContent = Instance.new("Frame")
+AimbotContent.Name = "AimbotContent"
+AimbotContent.Size = UDim2.new(1, 0, 0, 120)
+AimbotContent.Position = UDim2.new(0, 0, 0, 0)
+AimbotContent.BackgroundTransparency = 1
+AimbotContent.Visible = false
+AimbotContent.Parent = ContentArea
+
+-- Aimbot Players
+local AimbotLabel = Instance.new("TextLabel")
+AimbotLabel.Text = "AIMBOT PLAYERS"
+AimbotLabel.Size = UDim2.new(1, 0, 0, 20)
+AimbotLabel.Position = UDim2.new(0, 0, 0, 10)
+AimbotLabel.BackgroundTransparency = 1
+AimbotLabel.TextColor3 = Color3.new(1, 1, 1)
+AimbotLabel.TextSize = 12
+AimbotLabel.Parent = AimbotContent
+
+local AimbotToggle = Instance.new("TextButton")
+AimbotToggle.Text = "Ativar"
+AimbotToggle.Size = UDim2.new(0.4, 0, 0, 20)
+AimbotToggle.Position = UDim2.new(0.3, 0, 0, 35)
+AimbotToggle.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+AimbotToggle.TextColor3 = Color3.new(1, 1, 1)
+AimbotToggle.Parent = AimbotContent
+
+local ModeLabel = Instance.new("TextLabel")
+ModeLabel.Text = "Modo: "..aimbotMode
+ModeLabel.Size = UDim2.new(1, 0, 0, 20)
+ModeLabel.Position = UDim2.new(0, 0, 0, 65)
+ModeLabel.BackgroundTransparency = 1
+ModeLabel.TextColor3 = Color3.new(1, 1, 1)
+ModeLabel.TextSize = 12
+ModeLabel.Parent = AimbotContent
+
+local ModeSwitch = Instance.new("TextButton")
